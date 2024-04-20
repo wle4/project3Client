@@ -4,76 +4,117 @@ import java.util.HashMap;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 public class GuiClient extends Application{
+	TextField usernameBox; // specifically used for when the user has to enter a username
 
+	HashMap<String, Scene> sceneMap; // maps all scenes
+	VBox clientBox; // user's window, which puts everything together
+	Client clientConnection; // connection between the client and server
+	String tempUsername; // temporarily stores any username attempts here, mainly used for choosing the username
 	
-	TextField c1;
-	Button b1;
-	HashMap<String, Scene> sceneMap;
-	VBox clientBox;
-	Client clientConnection;
-	
-	ListView<String> listItems2;
-	
-	
+	ListView<String> listItems2; // lists out all messages from all clients
+
+
 	public static void main(String[] args) {
 		launch(args);
 	}
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
-		clientConnection = new Client(data->{
-				Platform.runLater(()->{listItems2.getItems().add(data.toString());
-			});
-		});
-							
-		clientConnection.start();
-
 		listItems2 = new ListView<String>();
-		
-		c1 = new TextField();
-		b1 = new Button("Send");
-		b1.setOnAction(e->{clientConnection.send("", "",c1.getText()); c1.clear();}); // default to sender and msg for now
-		
+
+		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>(){ // completely closes program when window is closed
+			@Override
+			public void handle(WindowEvent t) {
+				Platform.exit();System.exit(0);
+			}
+		});
+
+		// create scenes and store in map
 		sceneMap = new HashMap<String, Scene>();
 
-		sceneMap.put("client",  createClientGui());
-		
-		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
-            @Override
-            public void handle(WindowEvent t) {
-                Platform.exit();
-                System.exit(0);
-            }
-        });
+		// initialize and store the scenes, ANY NEW SCENES SHOULD BE INITIALIZED AND ADDED HERE
+		sceneMap.put("username", chooseUsernameScene());
+		sceneMap.put("publicChatroom",  publicChatroom());
 
+		// clients will start in the chooseUsernameScene
+		primaryStage.setScene(sceneMap.get("username"));
+		primaryStage.setTitle("Discord 2: Choosing username...");
 
-		primaryStage.setScene(sceneMap.get("client"));
-		primaryStage.setTitle("Client");
 		primaryStage.show();
-		
-	}
-	
 
-	
-	public Scene createClientGui() {
-		
-		clientBox = new VBox(10, c1,b1,listItems2);
-		clientBox.setStyle("-fx-background-color: blue;"+"-fx-font-family: 'serif';");
+		clientConnection = new Client(data->{
+				Platform.runLater(()->{
+					Message serverMessage = (Message) data; //THIS is saying callback.accept() now takes in new messages as a Message object
+
+					// SPECIFICALLY USED FOR CHOOSING A USERNAME
+					if(serverMessage.getMsg().equals("good")) { // server will send a message back saying whether the username is valid
+						// moves the client to the chatroom once they properly set up a username
+						clientConnection.clientUsername = tempUsername; // client's username is stored in Client.java that it's easier to reference to
+						primaryStage.setScene(sceneMap.get("publicChatroom")); // changes the scene to the public chatroom (after username is made, default room will be this)
+						primaryStage.setTitle("Discord 2: Connected as " + clientConnection.clientUsername); // changes the title of the window
+					}
+					else if(serverMessage.getMsg().equals("Username already taken...")) {
+						//keeps client in the chooseUsername scene until they have a unique username
+						usernameBox.setPromptText("Username already taken...");
+					}
+					// end of choosing username, basically never used again
+
+					else {
+						// adds new messages to the client's current chatroom, THIS MIGHT HAVE TO CHANGE FOR DM'S AND GROUPS
+						listItems2.getItems().add(serverMessage.getSender() + ": " + serverMessage.getMsg());
+					}
+			});
+		});
+		//start client connection to the server
+		clientConnection.start();
+	}
+
+	public Scene chooseUsernameScene() {
+
+		Button send = new Button("Send"); // new send button for the choosing username (A NEW BUTTON NEEDS TO BE MADE FOR EVERY SCENE, OTHERWISE IT BREAKS)
+		usernameBox = new TextField(); // new textfield for the entering username (SAME THING, NEW ONE FOR EACH SCENE)
+		usernameBox.setPromptText("Enter a username");
+
+		send.setOnAction(e->{
+			tempUsername = usernameBox.getText().trim(); // takes the text in the textfield and "trims" off leading/trailing spaces
+			if(!tempUsername.isEmpty()){ // makes sure the textField isn't empty
+				clientConnection.setUsername(tempUsername);
+				usernameBox.clear();
+				System.out.println("username sent"); // checking is a name is sent, for testing purposes
+			}
+		}); // initially, the send button will be for setting up the username
+
+		clientBox = new VBox(10, usernameBox, send); // sets up components for the scene
+		clientBox.setStyle("-fx-background-color: blue;" + "-fx-font-family: 'serif';");
 		return new Scene(clientBox, 400, 300);
-		
 	}
 
+	public Scene publicChatroom(){
+		Button send = new Button("Send"); // new send button for the public chat (A NEW BUTTON NEEDS TO BE MADE FOR EVERY SCENE, OTHERWISE IT BREAKS)
+		TextField msgbox = new TextField(); // new textfield for the public chat (SAME THING, NEW ONE FOR EACH SCENE)
+
+		send.setOnAction(e->{ //because we're in the public chat, the send button will be sending to ALL clients
+			String msg = msgbox.getText();
+			if(!msg.isEmpty()){
+				clientConnection.send("all", clientConnection.clientUsername, msg); // grabs message from textbox and wraps it in a Message Object in the send() function
+				msgbox.clear();
+			}
+		});
+
+		clientBox = new VBox(10, msgbox, send,listItems2); // sets up components for the scene
+		clientBox.setStyle("-fx-background-color: gray;"+"-fx-font-family: 'serif';");
+		return new Scene(clientBox);
+	}
+
+	// if you are gonna add more scenes, do it the same way i did it, and make sure to initialize it in
+	// start() and store it into the Hashmap with a good name for it
 }

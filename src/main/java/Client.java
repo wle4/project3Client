@@ -14,6 +14,8 @@ public class Client extends Thread{
 	ObjectOutputStream out; // java library
 	ObjectInputStream in; // java library
 
+	String clientUsername;
+
 	private Consumer<Serializable> callback; // be able to print this out in front end
 
 	// Constructor for the Client class, which takes a Consumer<Serializable> callback
@@ -24,7 +26,7 @@ public class Client extends Thread{
 	// accept()- which takes <Serializable> as parameter
 	// then takes that parameter into Consumer
 	Client(Consumer<Serializable> call){
-
+		clientUsername = "temp";
 		callback = call;
 	}
 
@@ -43,14 +45,33 @@ public class Client extends Thread{
 
 			try {
 			// Reading a Serializable object from the ObjectInputStream and converting it to a String
-			//String message = in.readObject().toString();
 				Message message = (Message) in.readObject();
+
+				if(message.getSender().equals("Server")){
+					String serverMessage = message.getMsg();
+					if(serverMessage.equals("good")){
+						callback.accept(new Message("","",""));
+					}
+					else if(serverMessage.equals("Username already taken...")){
+						callback.accept(new Message("","","Username already taken..."));
+					}
+				}
 			// Passing the received message to the callback function
 				callback.accept(message);
 			}
 			catch(Exception e) {}
 		}
 
+	}
+
+	public void setUsername(String username){
+		// specifically used for setting the client's username, it sends a Message object to the server for the server to check if it's valid
+		try {
+			Message message = new Message("", "", username); // make a new message object containing the username
+			out.writeObject(message); // send the message object to the server
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	// Method to send data to the server
@@ -63,7 +84,7 @@ public class Client extends Thread{
 			Message message = new Message(receiver, sender, msg); // make a new message object
 			out.writeObject(message); // send the message object to the server
 		} catch (IOException e) {
-// TODO Auto-generated catch block
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
