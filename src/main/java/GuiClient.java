@@ -45,7 +45,7 @@ public class GuiClient extends Application{
 		
 		c1 = new TextField();
 		b1 = new Button("Send");
-		b1.setOnAction(e->{clientConnection.send(c1.getText()); c1.clear();});
+		b1.setOnAction(e->{clientConnection.send("", "",c1.getText()); c1.clear();}); // default to sender and msg for now
 		
 		sceneMap = new HashMap<String, Scene>();
 

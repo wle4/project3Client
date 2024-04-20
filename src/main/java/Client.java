@@ -9,44 +9,48 @@ import java.util.function.Consumer;
 
 public class Client extends Thread{
 
-	
+
 	Socket socketClient;
-	
+
 	ObjectOutputStream out;
 	ObjectInputStream in;
-	
+
 	private Consumer<Serializable> callback;
-	
+
 	Client(Consumer<Serializable> call){
-	
+
 		callback = call;
 	}
-	
+
 	public void run() {
-		
+
 		try {
-		socketClient= new Socket("127.0.0.1",5555);
-	    out = new ObjectOutputStream(socketClient.getOutputStream());
-	    in = new ObjectInputStream(socketClient.getInputStream());
-	    socketClient.setTcpNoDelay(true);
+			socketClient= new Socket("127.0.0.1",5555);
+			out = new ObjectOutputStream(socketClient.getOutputStream());
+			in = new ObjectInputStream(socketClient.getInputStream());
+			socketClient.setTcpNoDelay(true);
 		}
 		catch(Exception e) {}
-		
+
 		while(true) {
-			 
+
 			try {
-			String message = in.readObject().toString();
-			callback.accept(message);
+				String message = in.readObject().toString();
+				callback.accept(message);
 			}
 			catch(Exception e) {}
 		}
-	
-    }
-	
-	public void send(String data) {
-		
+
+	}
+
+	public void send(String receiver, String sender, String msg) {
+
 		try {
-			out.writeObject(data);
+			// Writing the provided data as a Serializable object to the ObjectOutputStream
+			// sends to server
+			// everything that gets sent has to be a message object
+			Message message = new Message(receiver, sender, msg); // make a new message object
+			out.writeObject(message); // send the message object to the server
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
