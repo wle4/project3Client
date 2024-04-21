@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import javafx.application.Application;
@@ -24,7 +25,9 @@ public class GuiClient extends Application{
 	Client clientConnection; // connection between the client and server
 	String tempUsername; // temporarily stores any username attempts here, mainly used for choosing the username
 	ListView<String> listItems2; // lists out all messages from all clients
-	ListView<String> listClientNames;
+	ListView<Button> listClientNames; // stores all connected clients as a button
+
+	String receiver = "all";
 
 	public static void main(String[] args) {
 		launch(args);
@@ -32,7 +35,8 @@ public class GuiClient extends Application{
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
-		listItems2 = new ListView<String>();
+		listItems2 = new ListView<>();
+		listClientNames = new ListView<>();
 
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>(){ // completely closes program when window is closed
 			@Override
@@ -59,8 +63,14 @@ public class GuiClient extends Application{
 				Platform.runLater(()->{
 					Message serverMessage = (Message) data; //THIS is saying callback.accept() now takes in new messages as a Message object
 
+					// USED FOR DIRECT MESSAGES
+					if(serverMessage.getSender().equals("UPDATE")){
+						listClientNames.getItems().clear();
+						initializeUserListButtons(serverMessage.updateClients());
+					}
+
 					// SPECIFICALLY USED FOR CHOOSING A USERNAME
-					if(serverMessage.getMsg().equals("good")) { // server will send a message back saying whether the username is valid
+					else if(serverMessage.getMsg().equals("good")) { // server will send a message back saying whether the username is valid
 						// moves the client to the chatroom once they properly set up a username
 						clientConnection.clientUsername = tempUsername; // client's username is stored in Client.java that it's easier to reference to
 						primaryStage.setScene(sceneMap.get("publicChatroom")); // changes the scene to the public chatroom (after username is made, default room will be this)
@@ -103,15 +113,15 @@ public class GuiClient extends Application{
 	}
 
 	public Scene publicChatroom(Stage theStage){
-		Label titleLabel = new Label("Public Chat Room");
+		Label titleLabel = new Label("Chat Room");
 		Button send = new Button("Send"); // new send button for the public chat (A NEW BUTTON NEEDS TO BE MADE FOR EVERY SCENE, OTHERWISE IT BREAKS)
-		Button backButton = new Button("Back"); // (wheat) back button to view online clients
+		Button backButton = new Button("Users"); // (wheat) back button to view online clients
 		TextField msgbox = new TextField(); // new textfield for the public chat (SAME THING, NEW ONE FOR EACH SCENE)
 
 		send.setOnAction(e->{ //because we're in the public chat, the send button will be sending to ALL clients
 			String msg = msgbox.getText();
 			if(!msg.isEmpty()){
-				clientConnection.send("all", clientConnection.clientUsername, msg); // grabs message from textbox and wraps it in a Message Object in the send() function
+				clientConnection.send(receiver, clientConnection.clientUsername, msg); // grabs message from textbox and wraps it in a Message Object in the send() function
 				msgbox.clear();
 			}
 		});
@@ -138,11 +148,26 @@ public class GuiClient extends Application{
 			theStage.setScene(sceneMap.get("publicChatroom"));
 		});
 
-		backBox1 = new VBox(10, titleLabel, backButton);
+		backBox1 = new VBox(10, titleLabel, backButton, listClientNames);
 
 		return new Scene(backBox1, 400, 500);
 	}
 
-	// if you are gonna add more scenes, do it the same way i did it, and make sure to initialize it in
-	// start() and store it into the Hashmap with a good name for it
+	private void initializeUserListButtons(ArrayList<String> newList){
+		// initializes buttons for each user that is currently connected
+		Button allButton = new Button("All");
+		allButton.setOnAction(e->{
+			receiver = "all";
+		});
+		listClientNames.getItems().addAll(allButton);
+
+		for(String username : newList){
+			Button userButton = new Button(username);
+			userButton.setOnAction(e->{
+				receiver = userButton.getText();
+			});
+			listClientNames.getItems().addAll(userButton);
+
+		}
+	}
 }
