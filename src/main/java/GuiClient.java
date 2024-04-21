@@ -1,14 +1,16 @@
-
 import java.util.HashMap;
 
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
@@ -17,11 +19,12 @@ public class GuiClient extends Application{
 
 	HashMap<String, Scene> sceneMap; // maps all scenes
 	VBox clientBox; // user's window, which puts everything together
+	VBox backBox1; // (wheat) all clients window
+	HBox backBox; // (added by wheat) adds a back button to view all clients
 	Client clientConnection; // connection between the client and server
 	String tempUsername; // temporarily stores any username attempts here, mainly used for choosing the username
-	
 	ListView<String> listItems2; // lists out all messages from all clients
-
+	ListView<String> listClientNames;
 
 	public static void main(String[] args) {
 		launch(args);
@@ -43,7 +46,8 @@ public class GuiClient extends Application{
 
 		// initialize and store the scenes, ANY NEW SCENES SHOULD BE INITIALIZED AND ADDED HERE
 		sceneMap.put("username", chooseUsernameScene());
-		sceneMap.put("publicChatroom",  publicChatroom());
+		sceneMap.put("publicChatroom",  publicChatroom(primaryStage));
+		sceneMap.put("allUsers", viewOnlineClients(primaryStage)); // (wheat)
 
 		// clients will start in the chooseUsernameScene
 		primaryStage.setScene(sceneMap.get("username"));
@@ -98,8 +102,10 @@ public class GuiClient extends Application{
 		return new Scene(clientBox, 400, 300);
 	}
 
-	public Scene publicChatroom(){
+	public Scene publicChatroom(Stage theStage){
+		Label titleLabel = new Label("Public Chat Room");
 		Button send = new Button("Send"); // new send button for the public chat (A NEW BUTTON NEEDS TO BE MADE FOR EVERY SCENE, OTHERWISE IT BREAKS)
+		Button backButton = new Button("Back"); // (wheat) back button to view online clients
 		TextField msgbox = new TextField(); // new textfield for the public chat (SAME THING, NEW ONE FOR EACH SCENE)
 
 		send.setOnAction(e->{ //because we're in the public chat, the send button will be sending to ALL clients
@@ -110,9 +116,31 @@ public class GuiClient extends Application{
 			}
 		});
 
-		clientBox = new VBox(10, msgbox, send,listItems2); // sets up components for the scene
+		// (wheat) action event handling which proceeds to new scene viewOnlineClients(); which views all the clients online
+		backButton.setOnAction(e-> {
+			theStage.setScene(sceneMap.get("allUsers"));
+		});
+
+		backBox = new HBox(20, msgbox, send); // (wheat)
+		backBox.setAlignment(Pos.CENTER); // (wheat) position center box center
+
+		clientBox = new VBox(10, titleLabel, backButton, backBox,listItems2); // sets up components for the scene
 		clientBox.setStyle("-fx-background-color: gray;"+"-fx-font-family: 'serif';");
-		return new Scene(clientBox);
+		return new Scene(clientBox, 400, 500);
+	}
+
+	// (wheat) new view all clients scene
+	public Scene viewOnlineClients(Stage theStage) {
+		Label titleLabel = new Label("Online Clients");
+		Button backButton = new Button("Back");
+
+		backButton.setOnAction(e-> {
+			theStage.setScene(sceneMap.get("publicChatroom"));
+		});
+
+		backBox1 = new VBox(10, titleLabel, backButton);
+
+		return new Scene(backBox1, 400, 500);
 	}
 
 	// if you are gonna add more scenes, do it the same way i did it, and make sure to initialize it in
